@@ -1,0 +1,11 @@
+/* The whole site is one screen, like the game: a canvas scaled to fit, and nothing scrolls. */
+:root { color-scheme: dark; --ink: #0c0a09; --pale: #fff0a0; }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; overflow: hidden; background: var(--ink); color: var(--pale); touch-action: manipulation; overscroll-behavior: none; -webkit-user-select: none; user-select: none; }
+main { height: 100%; display: flex; align-items: center; justify-content: center; padding: env(safe-area-inset-top, 0px) env(safe-area-inset-right, 0px) env(safe-area-inset-bottom, 0px) env(safe-area-inset-left, 0px); }
+#screen { position: relative; z-index: 1; display: block; flex: none; image-rendering: pixelated; background: #14100e; outline: none; cursor: default; }
+#screen.clear { background: transparent; }
+#trailer, #clip { position: fixed; z-index: 0; object-fit: contain; image-rendering: pixelated; background: var(--ink); }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: 0; }
+noscript p { position: absolute; inset: 0 auto auto 0; padding: 16px; margin: 0; font: 18px/1.4 ui-monospace, monospace; }
