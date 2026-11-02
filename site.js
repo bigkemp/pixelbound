@@ -415,7 +415,7 @@ screens.gallery = {
 var isAndroid = /Android/i.test(navigator.userAgent), isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 var DL_KEYS = isAndroid ? ["android", "win"] : ["win", "android"], dlAt = 0, dlMsg = 0, DL_WHO = { win: "knight", android: "ninja" };
 var DL_NOTES = {
-	win: "UNZIP THE FOLDER AND OPEN PIXELBOUND.EXE. THE GAME ISN'T CODE-SIGNED YET, SO WINDOWS MAY WARN YOU: CHOOSE MORE INFO, THEN RUN ANYWAY.",
+	win: "OPEN THE DOWNLOADED PIXELBOUND EXE. THE GAME ISN'T CODE-SIGNED YET, SO WINDOWS MAY WARN YOU: CHOOSE MORE INFO, THEN RUN ANYWAY.",
 	android: "OPEN THE APK ON YOUR PHONE AND ALLOW YOUR BROWSER TO INSTALL APPS WHEN ASKED. TOUCH CONTROLS TURN ON BY THEMSELVES. NEEDS A 64-BIT DEVICE."
 };
 var TOGETHER = "UP TO FOUR ON ONE SCREEN, ON KEYBOARDS AND PADS IN ANY MIX. PHONES ON THE SAME WI-FI JOIN BY QR CODE. OR HOST A GAME ONLINE.";
