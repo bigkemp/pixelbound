@@ -247,6 +247,14 @@ function showClip() {
 	var p = clip.play(); if (p && p.catch) p.catch(function () {});
 }
 function pickHero(i) { heroAt = (i + PB.order.length) % PB.order.length; t = 0; showClip(); announce(); }
+// Names the shot on screen: each clip is the combo, then the skill from window.PB_SKILL_AT's second on.
+function clipLabel(b, id, d) {
+	var at = window.PB_SKILL_AT && window.PB_SKILL_AT[id];
+	if (!at) return;
+	var label = clip.currentTime >= at ? "SKILL: " + d.skill : "COMBO: " + d.combo;
+	c.fillStyle = "rgba(12,10,9,.85)"; c.fillRect(b.x, b.y + b.h - 13, label.length * 6 + 8, 13);
+	text(c, label, b.x + 4, b.y + b.h - 10, GOLD);
+}
 function statRows(d, x, y, w, h, on, off) {
 	["speed", "power", "range"].forEach(function (k, i) {
 		var ry = y + i * (h + 2); text(c, k, x, ry + ((h - 7) >> 1), PALE);
@@ -272,7 +280,7 @@ screens.heroes = {
 		if (portrait) {
 			c.fillStyle = GROUND; c.fillRect(0, 0, W, H);
 			c.clearRect(b.x, b.y, b.w, b.h);
-			tab("HEROES");
+			clipLabel(b, id, d); tab("HEROES");
 			backButton();
 			hit(b.x, b.y, b.w >> 1, b.h, function () { pickHero(heroAt - 1); });
 			hit(b.x + (b.w >> 1), b.y, b.w >> 1, b.h, function () { pickHero(heroAt + 1); });
@@ -291,7 +299,7 @@ screens.heroes = {
 		}
 		c.fillStyle = GROUND; c.fillRect(0, 0, W, H);
 		c.clearRect(b.x, b.y, b.w, b.h);
-		c.fillStyle = col; c.fillRect(320, 0, 3, 181); c.fillRect(0, 181, W, 2);
+		clipLabel(b, id, d); c.fillStyle = col; c.fillRect(320, 0, 3, 181); c.fillRect(0, 181, W, 2);
 		hit(b.x, b.y, b.w >> 1, b.h, function () { pickHero(heroAt - 1); });
 		hit(b.x + (b.w >> 1), b.y, b.w >> 1, b.h, function () { pickHero(heroAt + 1); });
 		backButton();
