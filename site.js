@@ -107,6 +107,85 @@ function strip(path, offset, top, dx) {
 	var x = -(((offset % i.width) + i.width) % i.width);
 	c.drawImage(i, x + dx, top); c.drawImage(i, x + dx + i.width, top);
 }
+// The knight's plume and sash, drawn as in the game (scripts/ui/title_screen.gd): each strand a
+// tapering ribbon along a curve that ripples in the wind, inked, with a dark fold and a lit streak.
+// Strand: [first control, second control, tip, width, phase, base, lit, taper?], relative to its root.
+var PLUME_ROOT = [258, 50], PLUME_INK = "#0a0608", STRAND_STEPS = 22;
+var PLUME_STRANDS = [
+	[[30, -22], [90, 10], [160, 46], 24, 2.1, "#8a0c1c", "#c0202e"],
+	[[34, -26], [100, -14], [176, 18], 24, 1.2, "#b8142a", "#f0404a"],
+	[[24, -10], [70, 30], [130, 74], 20, 3.0, "#a01024", "#e03440"],
+	[[30, -18], [88, 4], [160, 36], 26, 0.0, "#d81c30", "#ff6a6a"],
+	[[24, -26], [70, -30], [124, -8], 16, 4.2, "#e83040", "#ff9a8a"]];
+var RIBBON_ROOT = [114, 158], RIBBON_TAILS = [
+	[[-14, 6], [-30, 26], [-36, 64], 12, 0.6, "#8a0c1c", "#c0202e", 0.5],
+	[[-10, 4], [-22, 20], [-24, 54], 14, 2.0, "#b8142a", "#f0404a", 0.45]];
+function darken(hex, k) {
+	var n = parseInt(hex.slice(1), 16), r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
+	return "rgb(" + Math.round(r * (1 - k)) + "," + Math.round(g * (1 - k)) + "," + Math.round(b * (1 - k)) + ")";
+}
+function strandRest(s) {
+	if (s.rest) return s.rest;
+	var rest = [], swing = [], half = [], across = [], along = [], taper = s.length > 7 ? s[7] : 0.9, i;
+	for (i = 0; i <= STRAND_STEPS; i++) {
+		var q = i / STRAND_STEPS, u = 1 - q, a = 3 * u * u * q, b = 3 * u * q * q, d = q * q * q;
+		rest.push([s[0][0] * a + s[1][0] * b + s[2][0] * d, s[0][1] * a + s[1][1] * b + s[2][1] * d]);
+		swing.push(6 * Math.pow(q, 1.3));
+		half.push(s[3] * 0.5 * (1 - taper * Math.pow(q, 1.4)) + 0.5);
+	}
+	for (i = 0; i <= STRAND_STEPS; i++) {
+		var p = rest[Math.min(i + 1, STRAND_STEPS)], m = rest[Math.max(i - 1, 0)], dx = p[0] - m[0], dy = p[1] - m[1], l = Math.hypot(dx, dy) || 1;
+		along.push([dx / l, dy / l]); across.push([-dy / l, dx / l]);
+	}
+	return (s.rest = { rest: rest, swing: swing, half: half, across: across, along: along });
+}
+function strandShape(s) {
+	var r = strandRest(s), centre = [], ink = [[], []], body = [[], []], fold = [], streak = [], i;
+	for (i = 0; i <= STRAND_STEPS; i++) {
+		var q = i / STRAND_STEPS, wave = Math.sin(ticks * 0.09 + s[4] - q * 5.5) * r.swing[i], drift = Math.sin(ticks * 0.05 + s[4] + q * 3) * 1.5 * q;
+		centre.push([r.rest[i][0] + r.across[i][0] * wave + r.along[i][0] * drift, r.rest[i][1] + r.across[i][1] * wave + r.along[i][1] * drift]);
+	}
+	for (i = 0; i <= STRAND_STEPS; i++) {
+		var p = centre[Math.min(i + 1, STRAND_STEPS)], m = centre[Math.max(i - 1, 0)], dx = p[0] - m[0], dy = p[1] - m[1], l = Math.hypot(dx, dy) || 1;
+		var nx = -dy / l, ny = dx / l, h = r.half[i], ce = centre[i];
+		ink[0].push([ce[0] + nx * (h + 1), ce[1] + ny * (h + 1)]); ink[1].push([ce[0] - nx * (h + 1), ce[1] - ny * (h + 1)]);
+		body[0].push([ce[0] + nx * h, ce[1] + ny * h]); body[1].push([ce[0] - nx * h, ce[1] - ny * h]);
+	}
+	for (i = 1; i < Math.floor(STRAND_STEPS * 0.9); i++) {
+		fold.push([Math.round(centre[i][0] + (body[1][i][0] - centre[i][0]) * 0.6), Math.round(centre[i][1] + (body[1][i][1] - centre[i][1]) * 0.6)]);
+		streak.push([Math.round(centre[i][0] + (body[0][i][0] - centre[i][0]) * 0.45), Math.round(centre[i][1] + (body[0][i][1] - centre[i][1]) * 0.45)]);
+	}
+	return { ink: ink, body: body, fold: fold, streak: streak, base: s[5], lit: s[6] };
+}
+// One quad per step, as the game's triangle strip, so a strand that curls over itself still fills.
+function strandFill(sides, x, y, color) {
+	c.fillStyle = color; c.beginPath();
+	for (var i = 0; i < STRAND_STEPS; i++) {
+		var a = sides[0][i], b = sides[0][i + 1], d = sides[1][i + 1], e = sides[1][i];
+		c.moveTo(x + a[0], y + a[1]); c.lineTo(x + b[0], y + b[1]); c.lineTo(x + d[0], y + d[1]); c.lineTo(x + e[0], y + e[1]); c.closePath();
+	}
+	c.fill();
+}
+function strandLine(pts, x, y, color) {
+	c.strokeStyle = color; c.lineWidth = 2; c.lineJoin = "round"; c.beginPath();
+	pts.forEach(function (p, i) { if (i) c.lineTo(x + p[0], y + p[1]); else c.moveTo(x + p[0], y + p[1]); });
+	c.stroke();
+}
+function drawStrands(list, root, sx, sy, dx, by) {
+	var shapes = list.map(strandShape), x = root[0] + dx, y = root[1] + by;
+	shapes.forEach(function (s) { strandFill(s.ink, x + sx, y + sy, "rgba(13,0,5,0.45)"); });
+	shapes.forEach(function (s) {
+		strandFill(s.ink, x, y, PLUME_INK); strandFill(s.body, x, y, s.base);
+		strandLine(s.fold, x, y, darken(s.base, 0.45)); strandLine(s.streak, x, y, s.lit);
+	});
+}
+function disc(x, y, r, color) { c.fillStyle = color; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); }
+function drawPlume(dx, by) {
+	drawStrands(PLUME_STRANDS, PLUME_ROOT, 2, 3, dx, by);
+	var x = PLUME_ROOT[0] + dx, y = PLUME_ROOT[1] + by;
+	disc(x, y - 2, 10, PLUME_INK); disc(x, y - 2, 9, "#b82826"); disc(x - 3, y - 5, 4, "#e04a36");
+}
+var KNIGHT_DOWN = 14;
 function titleArt(dx) {
 	var f = Math.floor(ticks / 6) % 128, breath = Math.floor(ticks / 40) % 4 === 2 ? 1 : 0, gl = images["title/globe"];
 	drawImg("title/sky", dx, 0);
@@ -115,7 +194,11 @@ function titleArt(dx) {
 	strip("title/clouds_near", ticks / 4, 0, dx);
 	drawImg("title/spires", dx, 0);
 	c.globalAlpha = 0.25; strip("title/fog_back", ticks / 5, 168, dx); c.globalAlpha = 1;
+	// the knight and his globe stand lower than in the game, so the unfinished bottom of the painting sits off screen
+	breath += KNIGHT_DOWN;
 	drawImg("title/knight_aura", dx, breath, 0.5);
+	drawPlume(dx, breath);
+	drawStrands(RIBBON_TAILS, RIBBON_ROOT, 2, 2, dx, breath);
 	drawImg("title/body", dx, breath);
 	if (ready(gl)) c.drawImage(gl, (f % 16) * 120, Math.floor(f / 16) * 120, 120, 120, 182 + dx, 170 + breath, 120, 120);
 	drawImg("title/globe_clouds", dx + Math.round(Math.sin(ticks * 0.02) * 2), breath);
@@ -127,6 +210,37 @@ function titleArt(dx) {
 function soundButton(x, y) {
 	var on = Kit.sound();
 	button(x, y, 64, touch ? 18 : 13, on ? "SOUND ON" : "SOUND OFF", on, function () { Kit.setSound(!Kit.sound()); });
+}
+// The studio logo in the title's corner, a button to the About page. Under the cursor it rocks
+// up to 25 degrees left and right on its centre and PRESENTING circles it like a planet's ring, passing behind it and in front.
+var pointerAt = null, logoTap = 0, logoWake = 0, RING = "PRESENTING - PRESENTING - ";
+function logoTick() {
+	var s = titleSpot(), over = pointerAt && pointerAt.x >= s[0] && pointerAt.y >= s[1] && pointerAt.x < s[0] + s[2] && pointerAt.y < s[1] + s[3];
+	if (logoTap > 0) logoTap--;
+	logoWake = Math.max(0, Math.min(1, logoWake + (over || logoTap > 0 ? 0.08 : -0.06)));
+}
+function titleLogo() {
+	var s = titleSpot();
+	hit(s[0], s[1], s[2], s[3], function () { go("about"); });
+	var e = logoWake * logoWake * (3 - 2 * logoWake), turn = Math.sin(ticks * 0.05) * (25 * Math.PI / 180) * e;
+	var cx = s[0] + (s[2] >> 1), cy = s[1] + (s[3] >> 1) + 4, rx = Math.min(44, W - cx - 4), ry = 10, tilt = -0.18;
+	var letters = [];
+	if (e > 0) RING.split("").forEach(function (ch, i) {
+		var a = ticks * 0.02 - i * (Math.PI * 2 / RING.length), ex = Math.cos(a) * rx, ey = Math.sin(a) * ry;
+		letters.push({ ch: ch, x: cx + ex * Math.cos(tilt) - ey * Math.sin(tilt), y: cy + ex * Math.sin(tilt) + ey * Math.cos(tilt), front: Math.sin(a) > 0, depth: Math.sin(a) });
+	});
+	function ringHalf(front) {
+		letters.forEach(function (l) {
+			if (l.front !== front || l.ch === " ") return;
+			var x = Math.round(l.x - 2), y = Math.round(l.y - 3);
+			c.globalAlpha = e * (front ? 1 : 0.55 + 0.25 * (1 + l.depth));
+			text(c, l.ch, x + 1, y + 1, INK); text(c, l.ch, x, y, front ? PALE : MUTE);
+		});
+		c.globalAlpha = 1;
+	}
+	ringHalf(false);
+	if (ready(LOGO)) { c.save(); c.translate(s[0] + s[2] / 2, s[1] + s[3] / 2); c.rotate(turn); c.drawImage(LOGO, -s[2] / 2, -s[3] / 2); c.restore(); } // rocks flat on its centre, 25 degrees each way
+	ringHalf(true);
 }
 screens.title = {
 	speak: function () { return "Title screen. " + MENU[menuAt][0] + " selected."; },
@@ -141,7 +255,7 @@ screens.title = {
 			titleArt(-104);
 			c.fillStyle = "rgba(12,10,9,.5)"; c.fillRect(0, 0, W, 66);
 			drawImg("title/logo_crop", (W - 258) >> 1, 6);
-			if (!logoFly) drawImg("title/kompa_pompa", titleSpot()[0], titleSpot()[1]);
+			if (!logoFly) titleLogo();
 			text(c, "THE LAST PIXEL STANDING", W >> 1, 56, PALE, 1, true);
 			var rowH = Math.min(31, Math.floor((H - 272 - 22) / MENU.length));
 			MENU.forEach(function (m, i) {
@@ -153,7 +267,7 @@ screens.title = {
 		}
 		titleArt(0);
 		drawImg("title/logo_small", 0, 0);
-		if (!logoFly) drawImg("title/kompa_pompa", titleSpot()[0], titleSpot()[1]);
+		if (!logoFly) titleLogo();
 		text(c, "THE LAST PIXEL STANDING", 16, 42, PALE);
 		var h = touch ? 22 : 15, gap = touch ? 25 : 18, w = 114;
 		MENU.forEach(function (m, i) {
@@ -535,6 +649,35 @@ var LOGO = img("title/kompa_pompa"), splashOut = -1, splashSkip = false, logoFly
 // Where the splash shows the logo, and where the title keeps it: the logo flies from one to the other.
 function splashSpot() { return [(W - 144) >> 1, portrait ? (H >> 1) - 110 : 40, 144, 146]; }
 function titleSpot() { return portrait ? [W - 78, 200, 72, 73] : [400, touch ? 194 : 181, 72, 73]; }
+// About: the studio behind the game, reached by pressing the studio logo on the title.
+var ABOUT = [
+	["KOMPA POMPA", "AN INDIE GAME STUDIO, AND THE MAKERS OF PIXELBOUND."],
+	["THE GAME", "A PIXEL-ART ARENA FIGHTER FOR UP TO FOUR PLAYERS ON ONE SCREEN OR ONLINE, WITH THIRTEEN HEROES AND A CAMPAIGN TO CLIMB ALONE OR TOGETHER."],
+	["MADE WITH", "THE GODOT ENGINE."]];
+screens.about = {
+	speak: function () { return "About. " + ABOUT.map(function (a) { return a[0] + ": " + a[1]; }).join(" "); },
+	input: function (a) { if (a === "back") go("title"); if (a === "confirm") go("download"); },
+	draw: function () {
+		var y;
+		c.fillStyle = GROUND; c.fillRect(0, 0, W, H);
+		if (portrait) {
+			tab("ABOUT");
+			backButton();
+			drawImg("title/kompa_pompa", (W - 72) >> 1, 30);
+			y = 116;
+			ABOUT.forEach(function (a) { text(c, a[0], 12, y, GOLD); y = para(a[1], 12, y + 10, 41, PAPER) + 8; });
+			button(12, Math.max(y + 4, H - 44), W - 24, 34, "GET THE FREE DEMO", true, function () { go("download"); });
+		} else {
+			panel(2, 2, W - 4, H - (touch ? 4 : 20));
+			tab("ABOUT");
+			backButton();
+			if (ready(LOGO)) c.drawImage(LOGO, 28, 50, 144, 146);
+			y = 46;
+			ABOUT.forEach(function (a) { text(c, a[0], 196, y, GOLD); y = para(a[1], 196, y + 11, 44, PAPER) + 8; });
+			button(196, Math.max(y + 6, 200), 160, touch ? 22 : 18, "GET THE FREE DEMO", true, function () { go("download"); });
+		}
+	}
+};
 screens.load = {
 	input: function () { splashSkip = true; },
 	draw: function () {
@@ -592,10 +735,12 @@ addEventListener("pointerdown", function (e) {
 	var h = hitAt(toScreen(e), e.pointerType === "touch" ? 5 : 0);
 	if (h && h.onDo) { h.onDo(); sfx("ui", 0.3); }
 });
+canvas.addEventListener("pointerleave", function () { pointerAt = null; });
 addEventListener("pointermove", function (e) {
 	if (e.pointerType !== "mouse") return;
 	idle = 0; seenInput = 0;
-	var h = hitAt(toScreen(e), 0); canvas.style.cursor = h ? "pointer" : "default"; if (h && h.onHover) h.onHover();
+	pointerAt = toScreen(e);
+	var h = hitAt(pointerAt, 0); canvas.style.cursor = h ? "pointer" : "default"; if (h && h.onHover) h.onHover();
 });
 
 // ---- Fit and loop ----------------------------------------------------------------------------
@@ -620,6 +765,7 @@ var last = performance.now(), acc = 0;
 function tickAll() {
 	ticks++; t++;
 	if (logoFly > 0) logoFly--;
+	if (screen === "title") logoTick();
 	var s = screens[screen];
 	if (screen === "load") {
 		if (splashDone()) {
