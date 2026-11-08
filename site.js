@@ -646,8 +646,8 @@ function skinName(id) { var s = skinState(id), n = s.n, i = (s.at + (s.p > 0.5 ?
 // Any key or tap skips the wait once everything has loaded.
 var LOGO = img("title/kompa_pompa"), splashOut = -1, splashSkip = false, logoFly = 0, LOGO_FLY = 36;
 // Where the splash shows the logo, and where the title keeps it: the logo flies from one to the other.
-function splashSpot() { return [(W - 144) >> 1, portrait ? (H >> 1) - 110 : 40, 144, 146]; }
-function titleSpot() { return portrait ? [W - 78, 200, 72, 73] : [400, touch ? 194 : 181, 72, 73]; }
+function splashSpot() { return [(W - 120) >> 1, portrait ? (H >> 1) - 98 : 52, 120, 120]; }
+function titleSpot() { return portrait ? [W - 72, 206, 60, 60] : [406, touch ? 200 : 187, 60, 60]; }
 // About: the studio behind the game, reached by pressing the studio logo on the title.
 var ABOUT = [
 	["KOMPA POMPA", "AN INDIE GAME STUDIO, AND THE MAKERS OF PIXELBOUND."],
@@ -662,7 +662,7 @@ screens.about = {
 		if (portrait) {
 			tab("ABOUT");
 			backButton();
-			drawImg("title/kompa_pompa", (W - 72) >> 1, 30);
+			drawImg("title/kompa_pompa", (W - 60) >> 1, 36);
 			y = 116;
 			ABOUT.forEach(function (a) { text(c, a[0], 12, y, GOLD); y = para(a[1], 12, y + 10, 41, PAPER) + 8; });
 			button(12, Math.max(y + 4, H - 44), W - 24, 34, "GET THE FREE DEMO", true, function () { go("download"); });
@@ -670,7 +670,7 @@ screens.about = {
 			panel(2, 2, W - 4, H - (touch ? 4 : 20));
 			tab("ABOUT");
 			backButton();
-			if (ready(LOGO)) c.drawImage(LOGO, 28, 50, 144, 146);
+			if (ready(LOGO)) c.drawImage(LOGO, 40, 62, 120, 120);
 			y = 46;
 			ABOUT.forEach(function (a) { text(c, a[0], 196, y, GOLD); y = para(a[1], 196, y + 11, 44, PAPER) + 8; });
 			button(196, Math.max(y + 6, 200), 160, touch ? 22 : 18, "GET THE FREE DEMO", true, function () { go("download"); });
@@ -703,8 +703,10 @@ function drawLogoFly() {
 	var p = 1 - logoFly / LOGO_FLY, e = p * p * (3 - 2 * p), a = splashSpot(), b = titleSpot();
 	c.globalAlpha = 1 - e; c.fillStyle = INK; c.fillRect(0, 0, W, H); c.globalAlpha = 1;
 	if (!ready(LOGO)) return;
-	var w = Math.round(a[2] + (b[2] - a[2]) * e), h = Math.round(a[3] + (b[3] - a[3]) * e);
-	c.drawImage(LOGO, Math.round(a[0] + (b[0] - a[0]) * e), Math.round(a[1] + (b[1] - a[1]) * e), w, h);
+	// whole-pixel scales only (2x, then 1x past halfway), so the logo's pixels never come out uneven
+	var k = e < 0.5 ? 2 : 1, w = LOGO.width * k, h = LOGO.height * k;
+	var mx = a[0] + a[2] / 2 + (b[0] + b[2] / 2 - a[0] - a[2] / 2) * e, my = a[1] + a[3] / 2 + (b[1] + b[3] / 2 - a[1] - a[3] / 2) * e;
+	c.drawImage(LOGO, Math.round(mx - w / 2), Math.round(my - h / 2), w, h);
 }
 
 // ---- One input handler for every screen ------------------------------------------------------
