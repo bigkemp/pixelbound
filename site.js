@@ -101,7 +101,7 @@ function announce() { var s = screens[screen]; if (s.speak) say.textContent = s.
 addEventListener("popstate", function () { var want = (location.hash || "").slice(1); if (screens[want] && want !== "load") go(want, true); else go("title", true); });
 
 // Title
-var MENU = [["WATCH THE TRAILER", "watch"], ["HEROES", "heroes"], ["SKINS", "skins"], ["THE STORY", "story"], ["GALLERY", "gallery"], ["DOWNLOAD", "download"]], menuAt = 0;
+var MENU = [["WATCH THE TRAILER", "watch"], ["HEROES", "heroes"], ["THE STORY", "story"], ["GALLERY", "gallery"], ["DOWNLOAD", "download"]], menuAt = 0;
 function strip(path, offset, top, dx) {
 	var i = images[path]; if (!ready(i)) return;
 	var x = -(((offset % i.width) + i.width) % i.width);
@@ -141,7 +141,7 @@ screens.title = {
 			titleArt(-104);
 			c.fillStyle = "rgba(12,10,9,.5)"; c.fillRect(0, 0, W, 66);
 			drawImg("title/logo_crop", (W - 258) >> 1, 6);
-			drawImg("title/kompa_pompa", W - 78, 196);
+			if (!logoFly) drawImg("title/kompa_pompa", titleSpot()[0], titleSpot()[1]);
 			text(c, "THE LAST PIXEL STANDING", W >> 1, 56, PALE, 1, true);
 			var rowH = Math.min(31, Math.floor((H - 272 - 22) / MENU.length));
 			MENU.forEach(function (m, i) {
@@ -153,7 +153,7 @@ screens.title = {
 		}
 		titleArt(0);
 		drawImg("title/logo_small", 0, 0);
-		drawImg("title/kompa_pompa", 398, touch ? 176 : 168);
+		if (!logoFly) drawImg("title/kompa_pompa", titleSpot()[0], titleSpot()[1]);
 		text(c, "THE LAST PIXEL STANDING", 16, 42, PALE);
 		var h = touch ? 22 : 15, gap = touch ? 25 : 18, w = 114;
 		MENU.forEach(function (m, i) {
@@ -291,7 +291,9 @@ screens.heroes = {
 			text(c, d.name, 10 - slam, y + 9, PALE, 3);
 			text(c, d.title, 10, y + 33, MUTE);
 			statRows(d, 10, y + 45, 16, 8, col, "#3a2a24");
-			text(c, skinList(id).length + " SKINS", 200, y + 57, MUTE);
+			var sn = skinName(id);
+			text(c, sn[0], 150, y + 14, PALE);
+			skinLine(id, 144 + skinBody(id), y + 74, W - 150);
 			text(c, d.weapon + " / " + d.combo, 10, y + 79, GOLD);
 			var ny = para(d.text, 10, y + 90, 42, PAPER);
 			text(c, "SKILL " + d.skill, 10, ny + 5, GOLD);
@@ -308,7 +310,9 @@ screens.heroes = {
 		text(c, d.name, 330 - slam, 10, PALE, 3);
 		text(c, d.title, 330, 34, MUTE);
 		statRows(d, 330, 50, 18, 9, col, "#3a2a24");
-		text(c, skinList(id).length + " SKINS", 330, 88, MUTE);
+		var sn = skinName(id);
+		text(c, sn[0], 330, 88, PALE); text(c, sn[1], 472 - sn[1].length * 6, 88, MUTE);
+		skinLine(id, 330 + skinBody(id), 140, 144);
 		button(330, 148, 142, touch ? 28 : 24, "GET THE DEMO", true, function () { go("download"); });
 		text(c, d.weapon + " / " + d.combo, 8, 187, GOLD);
 		y = para(d.text, 8, 196, 77, PAPER, 8);
@@ -489,85 +493,54 @@ screens.download = {
 	}
 };
 
-// Skins: one hero's wardrobe as a queue walking away down a road. The front skin is big and lit;
-// the ones behind shrink and fade into the night, so most stay half hidden until their turn.
-var SKINS = window.PB_SKINS, skinSheets = {}, skinHero = 0, skinAt = 0, skinFlip = document.createElement("canvas"), sf = skinFlip.getContext("2d");
+// The hero's skins wait in a line on the heroes page, all at the same 2x as the rest of the art.
+// Only the front one shows its colours and its name; the rest stand behind it in shadow, darker
+// the further back. Every few seconds the front one walks off and the line steps up.
+var SKINS = window.PB_SKINS, skinSheets = {}, skinFlip = document.createElement("canvas"), sf = skinFlip.getContext("2d");
 function skinSheet(id) { if (!skinSheets[id]) { skinSheets[id] = new Image(); skinSheets[id].src = "assets/skins/" + id + ".png"; } return skinSheets[id]; }
 function skinList(id) { return SKINS.classes[id].skins; }
+// How wide the hero stands at 1x; an older cached skins.js without it falls back to the frame size.
+function skinBody(id) { var d = SKINS.classes[id]; return d.bw || Math.round(d.w * 0.6); }
 // A skin's frame, darkened toward a colour: amount 0 is the skin as it is, 1 a flat silhouette.
-function skinDraw(id, n, frame, x, feet, scale, shade, amount) {
+function skinDraw(id, n, frame, x, feet, shade, amount, alpha) {
 	var d = SKINS.classes[id], i = skinSheet(id), f = SKINS.frames.indexOf(frame);
-	if (!ready(i)) return;
+	if (!ready(i) || alpha <= 0) return;
 	skinFlip.width = d.w; skinFlip.height = d.h;
 	sf.globalCompositeOperation = "source-over"; sf.drawImage(i, f * d.w, n * d.h, d.w, d.h, 0, 0, d.w, d.h);
 	if (amount > 0) { sf.globalCompositeOperation = "source-atop"; sf.globalAlpha = amount; sf.fillStyle = shade; sf.fillRect(0, 0, d.w, d.h); sf.globalAlpha = 1; }
-	c.save(); c.translate(Math.round(x), Math.round(feet)); c.scale(scale, scale); c.drawImage(skinFlip, -d.ax, -d.ay); c.restore();
+	c.save(); c.globalAlpha = alpha; c.translate(Math.round(x), Math.round(feet)); c.scale(-2, 2); c.drawImage(skinFlip, -d.ax, -d.ay); c.restore();
 }
-var SKIN_IDLE = [["idle0", 30], ["idle1", 30], ["idle0", 30], ["blink", 6], ["idle1", 24]], SKIN_WIN = [["win0", 12], ["win1", 12]];
-function skinStep(d) { var n = skinList(PB.order[skinHero]).length; skinAt = (skinAt + d + n) % n; sfx("ui", 0.4); announce(); }
-function skinHeroStep(d) { skinHero = (skinHero + d + PB.order.length) % PB.order.length; skinAt = 0; sfx("ui", 0.4); announce(); }
-function skinRoad(fx, ff, vx, vy) {
-	var sky = c.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, "#14243a"); sky.addColorStop(1, "#3a1a2a"); c.fillStyle = sky; c.fillRect(0, 0, W, H);
-	var g = ff + 2;
-	c.fillStyle = "#2a1a24"; c.beginPath(); c.moveTo(0, g); c.lineTo(W, g); c.lineTo(vx + 15, vy); c.lineTo(vx - 15, vy); c.fill(); c.fillRect(0, g, W, H - g);
-	c.fillStyle = "#3a2a34"; c.beginPath(); c.moveTo(fx - 90, g); c.lineTo(fx + 230, g); c.lineTo(vx + 7, vy); c.lineTo(vx - 7, vy); c.fill();
-	c.fillRect(fx - 90, g, 320, H - g);
+var SKIN_IDLE = [["idle0", 30], ["idle1", 30], ["idle0", 30], ["blink", 6], ["idle1", 24]], SKIN_RUN = [["run0", 6], ["run1", 6], ["run2", 6], ["run3", 6]];
+var SKIN_STAY = 150, SKIN_MOVE = 24;
+function skinShade(pos) { return pos <= 0 ? 0 : (pos < 1 ? pos * 0.5 : Math.min(0.88, 0.5 + (pos - 1) * 0.08)); }
+// Where the line is now: the front skin's index and how far the step-up has got (0 to 1).
+function skinState(id) {
+	var n = skinList(id).length, phase = t % SKIN_STAY, p = n > 1 && phase >= SKIN_STAY - SKIN_MOVE ? (phase - SKIN_STAY + SKIN_MOVE) / SKIN_MOVE : 0;
+	return { at: Math.floor(t / SKIN_STAY) % n, p: p, n: n };
 }
-function skinQueue(fx, ff, vx, vy) {
-	var id = PB.order[skinHero], list = skinList(id), n = list.length;
-	for (var k = Math.min(n - 1, 9); k >= 0; k--) {
-		var i = (skinAt + k) % n, f = Math.pow(0.78, k), x = fx + (1 - f) * (vx - fx), feet = ff + (1 - f) * (vy - ff), sc = k === 0 ? 3 : (k < 3 ? 2 : 1), a = k === 0 ? SKIN_WIN : SKIN_IDLE;
-		skinDraw(id, i, Kit.animFrame(a, (ticks + i * 9) % Kit.animLen(a)), x, feet, sc, "#14243a", k === 0 ? 0 : Math.min(0.9, 0.35 + k * 0.1));
-		if (k > 0) (function (kk, xx, ff2, ss) { hit(xx - 8 * ss, ff2 - 20 * ss, 16 * ss, 20 * ss, function () { skinStep(kk); }); })(k, x, feet, sc);
+function skinLine(id, x, feet, width) {
+	var s = skinState(id), n = s.n, bw = skinBody(id) * 2, gap = Math.max(14, Math.round(bw * 0.55)), last = Math.min(n - 1, Math.floor((width - bw) / gap));
+	c.fillStyle = "#3a2a24"; c.fillRect(x - bw / 2, feet + 1, width, 2); c.fillStyle = "#1e090d"; c.fillRect(x - bw / 2, feet + 3, width, 1);
+	for (var k = Math.min(n - 1, last + 1); k >= 0; k--) {
+		var i = (s.at + k) % n, pos = k - s.p, walking = s.p > 0, alpha = k === 0 ? 1 - s.p : (k > last ? s.p : 1);
+		var a = walking ? SKIN_RUN : SKIN_IDLE;
+		skinDraw(id, i, Kit.animFrame(a, (ticks + i * 11) % Kit.animLen(a)), x + pos * gap, feet, GROUND, skinShade(pos), alpha);
 	}
 }
-screens.skins = {
-	enter: function () { skinHero = heroAt; skinAt = 0; PB.order.forEach(skinSheet); },
-	speak: function () { var id = PB.order[skinHero], s = skinList(id)[skinAt]; return "Skins. " + PB.classes[id].title + ", skin " + (skinAt + 1) + " of " + skinList(id).length + ": " + s.name + "."; },
-	input: function (a) {
-		if (a === "left" || a === "right") skinStep(a === "right" ? 1 : -1);
-		if (a === "up" || a === "down") skinHeroStep(a === "down" ? 1 : -1);
-		if (a === "confirm") skinStep(1);
-		if (a === "back") go("title");
-	},
-	draw: function () {
-		var id = PB.order[skinHero], list = skinList(id), s = list[skinAt], n = list.length, bh = touch ? 18 : 14;
-		if (portrait) {
-			skinRoad(W * 0.36, H - 70, W * 0.66, 120);
-			skinQueue(W * 0.36, H - 70, W * 0.66, 120);
-			tab("SKINS"); backButton();
-			button(8, 26, 20, bh, "<", false, function () { skinHeroStep(-1); }); button(W - 28, 26, 20, bh, ">", false, function () { skinHeroStep(1); });
-			text(c, PB.classes[id].title, W >> 1, 30, MUTE, 1, true);
-			text(c, s.name, W >> 1, 54, PALE, s.name.length > 20 ? 1 : 2, true);
-			text(c, "SKIN " + (skinAt + 1) + " OF " + n, W >> 1, 76, MUTE, 1, true);
-			c.fillStyle = "#" + s.accent; c.fillRect((W >> 1) - 40, 88, 80, 3);
-			button(12, H - 40, (W >> 1) - 18, 30, "BACK ONE", false, function () { skinStep(-1); });
-			button((W >> 1) + 6, H - 40, (W >> 1) - 18, 30, "NEXT", true, function () { skinStep(1); });
-			return;
-		}
-		skinRoad(170, 228, 320, 120);
-		skinQueue(170, 228, 320, 120);
-		tab("SKINS"); backButton();
-		button(130, 24, 14, bh, "<", false, function () { skinHeroStep(-1); }); button(336, 24, 14, bh, ">", false, function () { skinHeroStep(1); });
-		text(c, PB.classes[id].title + "  " + n + " SKINS", W >> 1, 28, MUTE, 1, true);
-		text(c, s.name, 16, 60, PALE, 2);
-		text(c, "SKIN " + (skinAt + 1) + " OF " + n, 16, 80, MUTE);
-		c.fillStyle = "#" + s.accent; c.fillRect(16, 92, 80, 3);
-		button(16, 104, 60, bh + 2, "BACK ONE", false, function () { skinStep(-1); });
-		button(82, 104, 44, bh + 2, "NEXT", true, function () { skinStep(1); });
-		hints([["RIGHT", "NEXT"], ["LEFT", "BACK ONE"], ["UP/DOWN", "HERO"], ["ESC", "BACK"]]);
-	}
-};
+function skinName(id) { var s = skinState(id), n = s.n, i = (s.at + (s.p > 0.5 ? 1 : 0)) % n; return [skinList(id)[i].name, (i + 1) + "/" + n]; }
 
 // Loading: the Kompa Pompa splash, held until the art is in and the logo has had its moment.
 // Any key or tap skips the wait once everything has loaded.
-var LOGO = img("title/kompa_pompa"), splashOut = -1, splashSkip = false;
+var LOGO = img("title/kompa_pompa"), splashOut = -1, splashSkip = false, logoFly = 0, LOGO_FLY = 36;
+// Where the splash shows the logo, and where the title keeps it: the logo flies from one to the other.
+function splashSpot() { return [(W - 144) >> 1, portrait ? (H >> 1) - 110 : 40, 144, 146]; }
+function titleSpot() { return portrait ? [W - 78, 200, 72, 73] : [400, touch ? 194 : 181, 72, 73]; }
 screens.load = {
 	input: function () { splashSkip = true; },
 	draw: function () {
 		c.fillStyle = INK; c.fillRect(0, 0, W, H);
-		var out = splashOut < 0 ? 1 : Math.max(0, 1 - splashOut / 24), rise = Math.min(1, Math.max(0, (t - 10) / 30)), lw = 144, lh = 146, ly = portrait ? (H >> 1) - 110 : 40;
-		if (ready(LOGO) && rise > 0) { c.globalAlpha = rise * out; c.drawImage(LOGO, (W - lw) >> 1, ly - Math.round((1 - rise) * 10), lw, lh); }
+		var out = splashOut < 0 ? 1 : Math.max(0, 1 - splashOut / 24), rise = Math.min(1, Math.max(0, (t - 10) / 30)), sp = splashSpot(), lh = sp[3], ly = sp[1];
+		if (ready(LOGO) && rise > 0) { c.globalAlpha = rise * out; c.drawImage(LOGO, sp[0], ly - Math.round((1 - rise) * 10), sp[2], lh); }
 		var words = Math.min(1, Math.max(0, (t - 50) / 20)) * out;
 		if (words > 0) { c.globalAlpha = words; text(c, "PRESENTS", W >> 1, ly + lh + 18, MUTE, 1, true); }
 		c.globalAlpha = 1;
@@ -576,8 +549,20 @@ screens.load = {
 };
 function splashDone() {
 	if (splashOut >= 0) return ++splashOut >= 24;
-	if (pending && loaded >= pending && PB.order.every(function (id) { return Kit.classSheet(id).img.complete; }) && (t >= 150 || splashSkip)) splashOut = 0;
+	if (pending && loaded >= pending && PB.order.every(function (id) { return Kit.classSheet(id).img.complete; }) && (t >= 150 || splashSkip)) {
+		var want = (location.hash || "").slice(1);
+		if (screens[want] && want !== "load" && want !== "watch" && want !== "title") splashOut = 0;
+		else { logoFly = LOGO_FLY; return true; }
+	}
 	return false;
+}
+// The flight over the title: black lifts off the title while the logo shrinks into its corner.
+function drawLogoFly() {
+	var p = 1 - logoFly / LOGO_FLY, e = p * p * (3 - 2 * p), a = splashSpot(), b = titleSpot();
+	c.globalAlpha = 1 - e; c.fillStyle = INK; c.fillRect(0, 0, W, H); c.globalAlpha = 1;
+	if (!ready(LOGO)) return;
+	var w = Math.round(a[2] + (b[2] - a[2]) * e), h = Math.round(a[3] + (b[3] - a[3]) * e);
+	c.drawImage(LOGO, Math.round(a[0] + (b[0] - a[0]) * e), Math.round(a[1] + (b[1] - a[1]) * e), w, h);
 }
 
 // ---- One input handler for every screen ------------------------------------------------------
@@ -634,6 +619,7 @@ canvas.focus({ preventScroll: true });
 var last = performance.now(), acc = 0;
 function tickAll() {
 	ticks++; t++;
+	if (logoFly > 0) logoFly--;
 	var s = screens[screen];
 	if (screen === "load") {
 		if (splashDone()) {
@@ -651,6 +637,7 @@ function frame(now) {
 	hitList = [];
 	c.setTransform(1, 0, 0, 1, 0, 0); c.imageSmoothingEnabled = false; c.globalAlpha = 1;
 	screens[screen].draw();
+	if (logoFly > 0) drawLogoFly();
 	// Inside a frame or another window the keys go elsewhere until the page gets focus: say so.
 	if (screen !== "load" && !touch && !document.hasFocus()) {
 		var mx = W >> 1, my = H >> 1;
