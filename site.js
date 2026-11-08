@@ -101,7 +101,7 @@ function announce() { var s = screens[screen]; if (s.speak) say.textContent = s.
 addEventListener("popstate", function () { var want = (location.hash || "").slice(1); if (screens[want] && want !== "load") go(want, true); else go("title", true); });
 
 // Title
-var MENU = [["WATCH THE TRAILER", "watch"], ["HEROES", "heroes"], ["THE STORY", "story"], ["GALLERY", "gallery"], ["DOWNLOAD", "download"]], menuAt = 0;
+var MENU = [["WATCH THE TRAILER", "watch"], ["HEROES", "heroes"], ["SKINS", "skins"], ["THE STORY", "story"], ["GALLERY", "gallery"], ["DOWNLOAD", "download"]], menuAt = 0;
 function strip(path, offset, top, dx) {
 	var i = images[path]; if (!ready(i)) return;
 	var x = -(((offset % i.width) + i.width) % i.width);
@@ -141,6 +141,7 @@ screens.title = {
 			titleArt(-104);
 			c.fillStyle = "rgba(12,10,9,.5)"; c.fillRect(0, 0, W, 66);
 			drawImg("title/logo_crop", (W - 258) >> 1, 6);
+			drawImg("title/kompa_pompa", W - 78, 196);
 			text(c, "THE LAST PIXEL STANDING", W >> 1, 56, PALE, 1, true);
 			var rowH = Math.min(31, Math.floor((H - 272 - 22) / MENU.length));
 			MENU.forEach(function (m, i) {
@@ -152,6 +153,7 @@ screens.title = {
 		}
 		titleArt(0);
 		drawImg("title/logo_small", 0, 0);
+		drawImg("title/kompa_pompa", 398, touch ? 176 : 168);
 		text(c, "THE LAST PIXEL STANDING", 16, 42, PALE);
 		var h = touch ? 22 : 15, gap = touch ? 25 : 18, w = 114;
 		MENU.forEach(function (m, i) {
@@ -289,7 +291,7 @@ screens.heroes = {
 			text(c, d.name, 10 - slam, y + 9, PALE, 3);
 			text(c, d.title, 10, y + 33, MUTE);
 			statRows(d, 10, y + 45, 16, 8, col, "#3a2a24");
-			text(c, d.skins + " SKINS", 200, y + 57, MUTE);
+			text(c, skinList(id).length + " SKINS", 200, y + 57, MUTE);
 			text(c, d.weapon + " / " + d.combo, 10, y + 79, GOLD);
 			var ny = para(d.text, 10, y + 90, 42, PAPER);
 			text(c, "SKILL " + d.skill, 10, ny + 5, GOLD);
@@ -306,7 +308,7 @@ screens.heroes = {
 		text(c, d.name, 330 - slam, 10, PALE, 3);
 		text(c, d.title, 330, 34, MUTE);
 		statRows(d, 330, 50, 18, 9, col, "#3a2a24");
-		text(c, d.skins + " SKINS", 330, 88, MUTE);
+		text(c, skinList(id).length + " SKINS", 330, 88, MUTE);
 		button(330, 148, 142, touch ? 28 : 24, "GET THE DEMO", true, function () { go("download"); });
 		text(c, d.weapon + " / " + d.combo, 8, 187, GOLD);
 		y = para(d.text, 8, 196, 77, PAPER, 8);
@@ -487,13 +489,96 @@ screens.download = {
 	}
 };
 
-screens.load = {
+// Skins: one hero's wardrobe as a queue walking away down a road. The front skin is big and lit;
+// the ones behind shrink and fade into the night, so most stay half hidden until their turn.
+var SKINS = window.PB_SKINS, skinSheets = {}, skinHero = 0, skinAt = 0, skinFlip = document.createElement("canvas"), sf = skinFlip.getContext("2d");
+function skinSheet(id) { if (!skinSheets[id]) { skinSheets[id] = new Image(); skinSheets[id].src = "assets/skins/" + id + ".png"; } return skinSheets[id]; }
+function skinList(id) { return SKINS.classes[id].skins; }
+// A skin's frame, darkened toward a colour: amount 0 is the skin as it is, 1 a flat silhouette.
+function skinDraw(id, n, frame, x, feet, scale, shade, amount) {
+	var d = SKINS.classes[id], i = skinSheet(id), f = SKINS.frames.indexOf(frame);
+	if (!ready(i)) return;
+	skinFlip.width = d.w; skinFlip.height = d.h;
+	sf.globalCompositeOperation = "source-over"; sf.drawImage(i, f * d.w, n * d.h, d.w, d.h, 0, 0, d.w, d.h);
+	if (amount > 0) { sf.globalCompositeOperation = "source-atop"; sf.globalAlpha = amount; sf.fillStyle = shade; sf.fillRect(0, 0, d.w, d.h); sf.globalAlpha = 1; }
+	c.save(); c.translate(Math.round(x), Math.round(feet)); c.scale(scale, scale); c.drawImage(skinFlip, -d.ax, -d.ay); c.restore();
+}
+var SKIN_IDLE = [["idle0", 30], ["idle1", 30], ["idle0", 30], ["blink", 6], ["idle1", 24]], SKIN_WIN = [["win0", 12], ["win1", 12]];
+function skinStep(d) { var n = skinList(PB.order[skinHero]).length; skinAt = (skinAt + d + n) % n; sfx("ui", 0.4); announce(); }
+function skinHeroStep(d) { skinHero = (skinHero + d + PB.order.length) % PB.order.length; skinAt = 0; sfx("ui", 0.4); announce(); }
+function skinRoad(fx, ff, vx, vy) {
+	var sky = c.createLinearGradient(0, 0, 0, H); sky.addColorStop(0, "#14243a"); sky.addColorStop(1, "#3a1a2a"); c.fillStyle = sky; c.fillRect(0, 0, W, H);
+	var g = ff + 2;
+	c.fillStyle = "#2a1a24"; c.beginPath(); c.moveTo(0, g); c.lineTo(W, g); c.lineTo(vx + 15, vy); c.lineTo(vx - 15, vy); c.fill(); c.fillRect(0, g, W, H - g);
+	c.fillStyle = "#3a2a34"; c.beginPath(); c.moveTo(fx - 90, g); c.lineTo(fx + 230, g); c.lineTo(vx + 7, vy); c.lineTo(vx - 7, vy); c.fill();
+	c.fillRect(fx - 90, g, 320, H - g);
+}
+function skinQueue(fx, ff, vx, vy) {
+	var id = PB.order[skinHero], list = skinList(id), n = list.length;
+	for (var k = Math.min(n - 1, 9); k >= 0; k--) {
+		var i = (skinAt + k) % n, f = Math.pow(0.78, k), x = fx + (1 - f) * (vx - fx), feet = ff + (1 - f) * (vy - ff), sc = k === 0 ? 3 : (k < 3 ? 2 : 1), a = k === 0 ? SKIN_WIN : SKIN_IDLE;
+		skinDraw(id, i, Kit.animFrame(a, (ticks + i * 9) % Kit.animLen(a)), x, feet, sc, "#14243a", k === 0 ? 0 : Math.min(0.9, 0.35 + k * 0.1));
+		if (k > 0) (function (kk, xx, ff2, ss) { hit(xx - 8 * ss, ff2 - 20 * ss, 16 * ss, 20 * ss, function () { skinStep(kk); }); })(k, x, feet, sc);
+	}
+}
+screens.skins = {
+	enter: function () { skinHero = heroAt; skinAt = 0; PB.order.forEach(skinSheet); },
+	speak: function () { var id = PB.order[skinHero], s = skinList(id)[skinAt]; return "Skins. " + PB.classes[id].title + ", skin " + (skinAt + 1) + " of " + skinList(id).length + ": " + s.name + "."; },
+	input: function (a) {
+		if (a === "left" || a === "right") skinStep(a === "right" ? 1 : -1);
+		if (a === "up" || a === "down") skinHeroStep(a === "down" ? 1 : -1);
+		if (a === "confirm") skinStep(1);
+		if (a === "back") go("title");
+	},
 	draw: function () {
-		c.fillStyle = INK; c.fillRect(0, 0, W, H);
-		text(c, "LOADING", W >> 1, (H >> 1) - 16, PALE, 2, true);
-		c.fillStyle = LINE; c.fillRect((W >> 1) - 100, (H >> 1) + 6, 200, 8); c.fillStyle = GOLD; c.fillRect((W >> 1) - 99, (H >> 1) + 7, 198 * (pending ? loaded / pending : 1), 6);
+		var id = PB.order[skinHero], list = skinList(id), s = list[skinAt], n = list.length, bh = touch ? 18 : 14;
+		if (portrait) {
+			skinRoad(W * 0.36, H - 70, W * 0.66, 120);
+			skinQueue(W * 0.36, H - 70, W * 0.66, 120);
+			tab("SKINS"); backButton();
+			button(8, 26, 20, bh, "<", false, function () { skinHeroStep(-1); }); button(W - 28, 26, 20, bh, ">", false, function () { skinHeroStep(1); });
+			text(c, PB.classes[id].title, W >> 1, 30, MUTE, 1, true);
+			text(c, s.name, W >> 1, 54, PALE, s.name.length > 20 ? 1 : 2, true);
+			text(c, "SKIN " + (skinAt + 1) + " OF " + n, W >> 1, 76, MUTE, 1, true);
+			c.fillStyle = "#" + s.accent; c.fillRect((W >> 1) - 40, 88, 80, 3);
+			button(12, H - 40, (W >> 1) - 18, 30, "BACK ONE", false, function () { skinStep(-1); });
+			button((W >> 1) + 6, H - 40, (W >> 1) - 18, 30, "NEXT", true, function () { skinStep(1); });
+			return;
+		}
+		skinRoad(170, 228, 320, 120);
+		skinQueue(170, 228, 320, 120);
+		tab("SKINS"); backButton();
+		button(130, 24, 14, bh, "<", false, function () { skinHeroStep(-1); }); button(336, 24, 14, bh, ">", false, function () { skinHeroStep(1); });
+		text(c, PB.classes[id].title + "  " + n + " SKINS", W >> 1, 28, MUTE, 1, true);
+		text(c, s.name, 16, 60, PALE, 2);
+		text(c, "SKIN " + (skinAt + 1) + " OF " + n, 16, 80, MUTE);
+		c.fillStyle = "#" + s.accent; c.fillRect(16, 92, 80, 3);
+		button(16, 104, 60, bh + 2, "BACK ONE", false, function () { skinStep(-1); });
+		button(82, 104, 44, bh + 2, "NEXT", true, function () { skinStep(1); });
+		hints([["RIGHT", "NEXT"], ["LEFT", "BACK ONE"], ["UP/DOWN", "HERO"], ["ESC", "BACK"]]);
 	}
 };
+
+// Loading: the Kompa Pompa splash, held until the art is in and the logo has had its moment.
+// Any key or tap skips the wait once everything has loaded.
+var LOGO = img("title/kompa_pompa"), splashOut = -1, splashSkip = false;
+screens.load = {
+	input: function () { splashSkip = true; },
+	draw: function () {
+		c.fillStyle = INK; c.fillRect(0, 0, W, H);
+		var out = splashOut < 0 ? 1 : Math.max(0, 1 - splashOut / 24), rise = Math.min(1, Math.max(0, (t - 10) / 30)), lw = 144, lh = 146, ly = portrait ? (H >> 1) - 110 : 40;
+		if (ready(LOGO) && rise > 0) { c.globalAlpha = rise * out; c.drawImage(LOGO, (W - lw) >> 1, ly - Math.round((1 - rise) * 10), lw, lh); }
+		var words = Math.min(1, Math.max(0, (t - 50) / 20)) * out;
+		if (words > 0) { c.globalAlpha = words; text(c, "PRESENTS", W >> 1, ly + lh + 18, MUTE, 1, true); }
+		c.globalAlpha = 1;
+		if (pending && loaded < pending && t > 60) { c.fillStyle = LINE; c.fillRect((W >> 1) - 40, H - 24, 80, 3); c.fillStyle = GOLD; c.fillRect((W >> 1) - 40, H - 24, 80 * loaded / pending, 3); }
+	}
+};
+function splashDone() {
+	if (splashOut >= 0) return ++splashOut >= 24;
+	if (pending && loaded >= pending && PB.order.every(function (id) { return Kit.classSheet(id).img.complete; }) && (t >= 150 || splashSkip)) splashOut = 0;
+	return false;
+}
 
 // ---- One input handler for every screen ------------------------------------------------------
 var MENU_KEYS = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down", a: "left", d: "right", w: "up", s: "down", Enter: "confirm", " ": "confirm", z: "confirm", j: "confirm", x: "confirm", Escape: "back", Backspace: "back", c: "back", k: "back" };
@@ -551,7 +636,7 @@ function tickAll() {
 	ticks++; t++;
 	var s = screens[screen];
 	if (screen === "load") {
-		if (pending && loaded >= pending && PB.order.every(function (id) { return Kit.classSheet(id).img.complete; })) {
+		if (splashDone()) {
 			var want = (location.hash || "").slice(1);
 			go(screens[want] && want !== "load" && want !== "watch" ? want : "title", true);
 		}
