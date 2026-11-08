@@ -107,7 +107,8 @@ function strip(path, offset, top, dx) {
 	var x = -(((offset % i.width) + i.width) % i.width);
 	c.drawImage(i, x + dx, top); c.drawImage(i, x + dx + i.width, top);
 }
-// The knight's plume and sash, drawn as in the game (scripts/ui/title_screen.gd): each strand a
+// The knight's plume and sash, drawn as in the game (scripts/ui/title_screen.gd). Off for now (the user
+// did not like how they looked on the site); titleArt no longer calls drawPlume or drawStrands. Each strand a
 // tapering ribbon along a curve that ripples in the wind, inked, with a dark fold and a lit streak.
 // Strand: [first control, second control, tip, width, phase, base, lit, taper?], relative to its root.
 var PLUME_ROOT = [258, 50], PLUME_INK = "#0a0608", STRAND_STEPS = 22;
@@ -197,8 +198,6 @@ function titleArt(dx) {
 	// the knight and his globe stand lower than in the game, so the unfinished bottom of the painting sits off screen
 	breath += KNIGHT_DOWN;
 	drawImg("title/knight_aura", dx, breath, 0.5);
-	drawPlume(dx, breath);
-	drawStrands(RIBBON_TAILS, RIBBON_ROOT, 2, 2, dx, breath);
 	drawImg("title/body", dx, breath);
 	if (ready(gl)) c.drawImage(gl, (f % 16) * 120, Math.floor(f / 16) * 120, 120, 120, 182 + dx, 170 + breath, 120, 120);
 	drawImg("title/globe_clouds", dx + Math.round(Math.sin(ticks * 0.02) * 2), breath);
