@@ -211,7 +211,7 @@ screens.watch = {
 			y = para("REAL FOOTAGE FROM THE GAME. ONE HIT AND YOU'RE OUT, ON ONE SCREEN OR ONLINE, WITH UP TO FOUR PLAYERS.", 12, y, 41, PAPER, 10) + 8;
 			[[PB.order.length, "CLASSES"], [PB.counts.maps, "MAPS"], [PB.counts.towers, "TOWERS"]].forEach(function (f, i) { var x = 12 + i * 86; text(c, f[0], x, y, GOLD, 2); text(c, f[1], x, y + 17, MUTE); });
 			y += 36;
-			button(12, y, W - 24, 30, "DOWNLOAD THE GAME", true, function () { go("download"); });
+			button(12, y, W - 24, 30, "GET THE FREE DEMO", true, function () { go("download"); });
 			button(12, y + 36, (W >> 1) - 16, 26, video.paused ? "PLAY" : "PAUSE", false, togglePlay);
 			trailerSound((W >> 1) + 4, y + 36, (W >> 1) - 16, 26);
 			hit(b.x, b.y, b.w, b.h, togglePlay);
@@ -307,14 +307,14 @@ screens.heroes = {
 		text(c, d.title, 330, 34, MUTE);
 		statRows(d, 330, 50, 18, 9, col, "#3a2a24");
 		text(c, d.skins + " SKINS", 330, 88, MUTE);
-		button(330, 148, 142, touch ? 28 : 24, "GET THE GAME", true, function () { go("download"); });
+		button(330, 148, 142, touch ? 28 : 24, "GET THE DEMO", true, function () { go("download"); });
 		text(c, d.weapon + " / " + d.combo, 8, 187, GOLD);
 		y = para(d.text, 8, 196, 77, PAPER, 8);
 		text(c, "SKILL " + d.skill, 8, y + 1, GOLD);
 		para(d.skillText, 8 + (d.skill.length + 7) * 6, y + 1, 76 - d.skill.length - 7, PAPER, 8);
 		var rosterY = H - (touch ? 39 : 52);
 		PB.order.forEach(function (rid, i) { rosterTile(rid, i, ((W - PB.order.length * 36) >> 1) + i * 36, rosterY, 35); });
-		hints([["LEFT/RIGHT", "HERO"], ["ENTER", "GET THE GAME"], ["ESC", "BACK"]]);
+		hints([["LEFT/RIGHT", "HERO"], ["ENTER", "GET THE DEMO"], ["ESC", "BACK"]]);
 	}
 };
 
@@ -358,8 +358,8 @@ screens.story = {
 		c.fillStyle = BROWN; c.fillRect(6, barY, W - 12, barH); c.fillStyle = PAPER; c.fillRect(8, barY + 2, W - 16, barH - 4);
 		var nw = 18 * 6 + 10, nx = W - nw - 14; c.fillStyle = BROWN; c.fillRect(nx - 1, barY - 8, nw + 2, 13); c.fillStyle = SEAL; c.fillRect(nx, barY - 7, nw, 11); text(c, "THE CROWNED KNIGHT", nx + 5, barY - 5, PALE);
 		wrap(l[1].slice(0, Math.floor(t / 1.5)), portrait ? 40 : 72).forEach(function (w, n) { text(c, w, 16, barY + 12 + n * 11, BROWN); });
-		if (touch) text(c, storyAt < LINES.length ? "TAP FOR MORE" : "TAP TO GET THE GAME", W - 16 - (storyAt < LINES.length ? 12 : 19) * 6, barY + barH - 13, SEAL);
-		hints([["ENTER", storyAt < LINES.length ? "NEXT" : "GET THE GAME"], ["LEFT", "BACK A LINE"], ["ESC", "TITLE"]]);
+		if (touch) text(c, storyAt < LINES.length ? "TAP FOR MORE" : "TAP TO GET THE DEMO", W - 16 - (storyAt < LINES.length ? 12 : 19) * 6, barY + barH - 13, SEAL);
+		hints([["ENTER", storyAt < LINES.length ? "NEXT" : "GET THE DEMO"], ["LEFT", "BACK A LINE"], ["ESC", "TITLE"]]);
 	}
 };
 
@@ -421,11 +421,12 @@ screens.gallery = {
 
 // Download: the phone's own platform comes first on a phone.
 var isAndroid = /Android/i.test(navigator.userAgent), isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-var DL_KEYS = isAndroid ? ["android", "win"] : ["win", "android"], dlAt = 0, dlMsg = 0, DL_WHO = { win: "knight", android: "ninja" };
+var DL_KEYS = isAndroid ? ["android", "win"] : ["win", "android"], dlAt = 0, dlMsg = 0, DL_WHO = { win: "ranger", android: "samurai" };
 var DL_NOTES = {
-	win: "OPEN THE DOWNLOADED PIXELBOUND EXE. THE GAME ISN'T CODE-SIGNED YET, SO WINDOWS MAY WARN YOU: CHOOSE MORE INFO, THEN RUN ANYWAY.",
+	win: "OPEN THE DOWNLOADED PIXELBOUND DEMO EXE. THE GAME ISN'T CODE-SIGNED YET, SO WINDOWS MAY WARN YOU: CHOOSE MORE INFO, THEN RUN ANYWAY.",
 	android: "OPEN THE APK ON YOUR PHONE AND ALLOW YOUR BROWSER TO INSTALL APPS WHEN ASKED. TOUCH CONTROLS TURN ON BY THEMSELVES. NEEDS A 64-BIT DEVICE."
 };
+var DEMO = "FREE DEMO: RANGER, BARBARIAN AND SAMURAI, DEATHMATCH IN THE ASHEN COURT, AND THE FIRST TOWER OF THE CAMPAIGN.";
 var TOGETHER = "UP TO FOUR ON ONE SCREEN, ON KEYBOARDS AND PADS IN ANY MIX. PHONES ON THE SAME WI-FI JOIN BY QR CODE. OR HOST A GAME ONLINE.";
 function getDownload(key) { var d = DL[key]; if (d.url) location.href = d.url; else dlMsg = 240; sfx("select"); }
 function dlPlate(k, i, x, y, w, h) {
@@ -434,7 +435,7 @@ function dlPlate(k, i, x, y, w, h) {
 	spr(s, Kit.animFrame(a, t % Kit.animLen(a)), x + 32, y + h - 10, 2);
 	text(c, d.label, x + 66, y + 8, on ? PALE : MUTE, 2);
 	text(c, d.detail.toUpperCase() + ", " + d.size.toUpperCase(), x + 66, y + 27, MUTE);
-	text(c, "PIXELBOUND " + PB.version, x + 66, y + 37, PAPER);
+	text(c, "FREE DEMO " + PB.version, x + 66, y + 37, PAPER);
 	hit(x, y, w, h, function () { dlAt = i; getDownload(k); announce(); }, function () { if (dlAt !== i) { dlAt = i; announce(); } });
 }
 screens.download = {
@@ -450,11 +451,12 @@ screens.download = {
 		var y, key = DL_KEYS[dlAt];
 		c.fillStyle = GROUND; c.fillRect(0, 0, W, H);
 		if (portrait) {
-			tab("GET THE GAME");
+			tab("GET THE DEMO");
 			backButton();
 			DL_KEYS.forEach(function (k, i) { dlPlate(k, i, 8, 26 + i * 62, W - 16, 58); });
 			y = 154;
 			if (isIOS) y = para("NO IPHONE OR IPAD VERSION YET. PLAY IT ON WINDOWS OR ANDROID.", 12, y, 41, GOLD) + 4;
+			y = para(DEMO, 12, y, 41, GOLD) + 5;
 			text(c, "HOW TO INSTALL", 12, y, GOLD);
 			y = para(DL_NOTES[key], 12, y + 10, 41, PAPER) + 5;
 			text(c, "PLAY TOGETHER", 12, y, GOLD);
@@ -469,6 +471,7 @@ screens.download = {
 			DL_KEYS.forEach(function (k, i) { dlPlate(k, i, 22 + i * 224, 26, 212, 58); });
 			y = 92;
 			if (isIOS) { text(c, "NO IPHONE OR IPAD VERSION YET. PLAY IT ON WINDOWS OR ANDROID.", 240, y, GOLD, 1, true); y += 12; }
+			y = para(DEMO, 22, y, 72, GOLD) + 6;
 			text(c, "HOW TO INSTALL", 22, y, GOLD);
 			y = para(DL_NOTES[key], 22, y + 11, 72, PAPER) + 6;
 			text(c, "PLAY TOGETHER", 22, y, GOLD);
