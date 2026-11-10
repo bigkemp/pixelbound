@@ -1,1 +1,1 @@
-window.PB_SKILL_AT={"ranger":2.833,"knight":1.733,"dwarf":1.467,"barbarian":3.2,"ninja":2.367,"alchemist":2.5,"hunter":1.4,"babybot":1.7,"soldier":1.267,"samurai":1.767,"fighter":1.633,"fencer":1.467,"engineer":1.767};
+window.PB_SKILL_AT={"ranger":2.833,"knight":1.733,"dwarf":1.9,"barbarian":3.2,"ninja":2.367,"alchemist":2.5,"hunter":1.4,"babybot":1.7,"soldier":1.267,"samurai":1.767,"fighter":1.633,"fencer":1.467,"engineer":1.767};
