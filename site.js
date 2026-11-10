@@ -210,7 +210,7 @@ function soundButton(x, y) {
 	var on = Kit.sound();
 	button(x, y, 64, touch ? 18 : 13, on ? "SOUND ON" : "SOUND OFF", on, function () { Kit.setSound(!Kit.sound()); });
 }
-// The studio logo in the title's corner, a button to the About page. Under the cursor it rocks
+// The Kompa Pompa logo in the title's corner, a button to the About page. Under the cursor it rocks
 // up to 25 degrees left and right on its centre and PRESENTING circles it like a planet's ring, passing behind it and in front.
 var pointerAt = null, logoTap = 0, logoWake = 0, RING = "PRESENTING - PRESENTING - ";
 function logoTick() {
@@ -648,9 +648,9 @@ var LOGO = img("title/kompa_pompa"), splashOut = -1, splashSkip = false, logoFly
 // Where the splash shows the logo, and where the title keeps it: the logo flies from one to the other.
 function splashSpot() { return [(W - 120) >> 1, portrait ? (H >> 1) - 98 : 52, 120, 120]; }
 function titleSpot() { return portrait ? [W - 72, 206, 60, 60] : [406, touch ? 200 : 187, 60, 60]; }
-// About: the studio behind the game, reached by pressing the studio logo on the title.
+// About: the developer behind the game, reached by pressing the Kompa Pompa logo on the title.
 var ABOUT = [
-	["KOMPA POMPA", "AN INDIE GAME STUDIO, AND THE MAKERS OF PIXELBOUND."],
+	["KOMPA POMPA", "A ONE-PERSON INDIE DEVELOPER, AND THE MAKER OF PIXELBOUND."],
 	["THE GAME", "A PIXEL-ART ARENA FIGHTER FOR UP TO FOUR PLAYERS ON ONE SCREEN OR ONLINE, WITH THIRTEEN HEROES AND A CAMPAIGN TO CLIMB ALONE OR TOGETHER."],
 	["MADE WITH", "THE GODOT ENGINE."]];
 screens.about = {
